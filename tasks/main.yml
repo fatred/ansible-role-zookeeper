@@ -1,0 +1,182 @@
+---
+# https://zookeeper.apache.org/doc/r3.4.13/zookeeperStarted.html#ch_GettingStarted
+
+# https://docs.ansible.com/ansible/latest/modules/include_vars_module.html
+- name: Include defaults for configuration, per the requested version.
+  include_vars:
+    file: main-{{ zookeeper.version }}.yml
+
+# http://docs.ansible.com/ansible/latest/set_fact_module.html
+- name: Merge zookeeper_default and zookeeper variables
+  set_fact:
+    zookeeper_combined: "{{ zookeeper_defaults | combine(zookeeper, recursive=True) }}"
+
+# https://docs.ansible.com/ansible/latest/modules/command_module.html
+- name: Get the platform (i386 or amd64) of the virtual machine
+  command: dpkg --print-architecture
+  register: print_architecture
+
+# https://docs.ansible.com/ansible/latest/modules/set_fact_module.html
+- name: Set the platform value as a variable
+  set_fact:
+    platform: "{{ print_architecture.stdout }}"
+
+# https://docs.ansible.com/ansible/latest/modules/apt_module.html
+- name: Install from Ubuntu repo
+  apt:
+    name: "zookeeper={{ zookeeper_combined.version }}"
+    state: present
+  when:
+    - zookeeper_combined.install_repo_ubuntu
+
+# https://docs.ansible.com/ansible/latest/modules/apt_module.html
+- name: Install from Ubuntu repo
+  apt:
+    name: "zookeeperd={{ zookeeper_combined.version }}"
+    state: present
+  when:
+    - zookeeper_combined.install_repo_ubuntu
+
+# curl http://kafka.apache.org/KEYS | gpg --import
+
+# http://zookeeper.apache.org/releases.html
+# http://www-us.apache.org/dist/zookeeper/zookeeper-3.4.12/zookeeper-3.4.12.tar.gz
+# https://docs.ansible.com/ansible/2.5/modules/get_url_module.html
+- name: Download tgz
+  get_url:
+    url: "{{ zookeeper_url }}/zookeeper-{{ zookeeper_combined.version }}/zookeeper-{{ zookeeper_combined.version }}.tar.gz"
+    dest: "/opt/zookeeper.tar.gz"
+  when:
+    - zookeeper_combined.install_repo_apache
+
+# gpg --verify zookeeper_2.12-1.0.1.tgz.asc zookeeper_2.12-1.0.1.tgz
+
+# sudo adduser --system --no-create-home --disabled-password --disabled-login zookeeper
+# https://docs.ansible.com/ansible/latest/modules/user_module.html
+- name: Create zookeeper user
+  user:
+    name: zookeeper
+    groups: zookeeper
+    state: present
+  when:
+    - zookeeper_combined.install_repo_apache
+
+# https://docs.ansible.com/ansible/latest/modules/unarchive_module.html
+- name: Unarchive the tgz file
+  unarchive:
+    src: /opt/zookeeper.tar.gz
+    dest: /opt
+    remote_src: yes
+  when:
+    - zookeeper_combined.install_repo_apache
+
+# https://stackoverflow.com/a/24457830
+# https://docs.ansible.com/ansible/2.5/modules/command_module.html
+- name: Move files to system folder
+  command: mv /opt/zookeeper-{{ zookeeper_combined.version }}/ {{ zookeeper_combined.config_dir }}
+  args:
+    removes: "/opt/zookeeper-{{ zookeeper_combined.version }}/"
+    creates: "{{ zookeeper_combined.config_dir }}"
+  when:
+    - zookeeper_combined.install_repo_apache
+
+# https://docs.ansible.com/ansible/latest/modules/file_module.html
+- name: Create directories, set owner, permissions
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: zookeeper
+    group: zookeeper
+    mode: 0755
+    recurse: yes
+  with_items:
+    - "{{ zookeeper_combined.config_dir }}"
+    - "{{ zookeeper_combined.config_dir }}/data"
+    - "/var/log/zookeeper"
+    - "/var/lib/zookeeper"
+  when:
+    - zookeeper_combined.install_repo_apache
+
+# http://docs.ansible.com/ansible/latest/template_module.html
+- name: Copy init.d service script
+  template:
+    src: "zookeeper"
+    dest: "/etc/init.d/zookeeper"
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - zookeeper_combined.install_repo_apache
+
+# https://zookeeper.apache.org/doc/r3.4.13/zookeeperAdmin.html#sc_configuration
+# http://docs.ansible.com/ansible/latest/template_module.html
+- name: Copy config file
+  template:
+    src: "zoo.cfg"
+    dest: "{{ zookeeper_combined.config_include_dir }}/zoo.cfg"
+    owner: zookeeper
+    group: zookeeper
+    mode: 0644
+  when:
+    - not zookeeper_combined.install_only
+
+# https://zookeeper.apache.org/doc/r3.4.13/zookeeperAdmin.html#sc_configuration
+# http://docs.ansible.com/ansible/latest/template_module.html
+- name: Copy config file
+  template:
+    src: "configuration.xsl"
+    dest: "{{ zookeeper_combined.config_include_dir }}/configuration.xsl"
+    owner: zookeeper
+    group: zookeeper
+    mode: 0644
+  when:
+    - not zookeeper_combined.install_only
+
+# https://zookeeper.apache.org/doc/r3.4.13/zookeeperAdmin.html#sc_configuration
+# http://docs.ansible.com/ansible/latest/template_module.html
+- name: Copy config file
+  template:
+    src: "environment"
+    dest: "{{ zookeeper_combined.config_include_dir }}/environment"
+    owner: zookeeper
+    group: zookeeper
+    mode: 0644
+  when:
+    - not zookeeper_combined.install_only
+
+# https://zookeeper.apache.org/doc/r3.4.13/zookeeperAdmin.html#sc_configuration
+# http://docs.ansible.com/ansible/latest/template_module.html
+- name: Copy config file
+  template:
+    src: "log4j.properties"
+    dest: "{{ zookeeper_combined.config_include_dir }}/log4j.properties"
+    owner: zookeeper
+    group: zookeeper
+    mode: 0644
+  when:
+    - not zookeeper_combined.install_only
+
+# http://docs.ansible.com/ansible/latest/service_module.html
+- name: Ensure service auto-starts
+  service:
+    name: zookeeper
+    enabled: yes
+  when:
+    - not zookeeper_combined.install_only
+
+# http://docs.ansible.com/ansible/latest/service_module.html
+- name: Restart service
+  service:
+    name: "{{ zookeeper_combined.daemon }}"
+    state: restarted
+  when:
+    - not zookeeper_combined.install_only
+
+# http://docs.ansible.com/ansible/latest/service_module.html
+- name: Ensure service is running
+  service: 
+    name: zookeeper
+    state: started
+    enabled: yes
+  when:
+    - not zookeeper_combined.install_only

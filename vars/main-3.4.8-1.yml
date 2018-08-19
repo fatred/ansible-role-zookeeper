@@ -1,0 +1,11 @@
+---
+
+zookeeper_defaults:
+  daemon: "zookeeper"
+  version: "3.4.8-1"
+  config_dir: "/etc/zookeeper"
+  config_include_dir: "/etc/zookeeper/conf"
+  install_only: false
+  install_repo: false
+  install_repo_apache: false
+  install_repo_ubuntu: true

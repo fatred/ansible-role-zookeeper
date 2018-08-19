@@ -1,0 +1,7 @@
+---
+# https://kafka.apache.org/downloads
+zookeeper_url: "http://www-us.apache.org/dist/zookeeper"
+
+# Overload variables using the dict named zookeeper
+zookeeper:
+  version: "3.4.8-1"

@@ -1,0 +1,8 @@
+[Unit]
+Description=High-available, distributed message broker
+After=network.target
+[Service]
+User=zookeeper
+ExecStart=/etc/zookeeper/bin/zkServer.sh start
+[Install]
+WantedBy=multi-user.target
