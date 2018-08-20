@@ -30,7 +30,7 @@
     - zookeeper_combined.install_repo_ubuntu
 
 # https://docs.ansible.com/ansible/latest/modules/apt_module.html
-- name: Install from Ubuntu repo
+- name: Install daemon from Ubuntu repo
   apt:
     name: "zookeeperd={{ zookeeper_combined.version }}"
     state: present
