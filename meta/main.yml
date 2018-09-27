@@ -2,6 +2,7 @@
 dependencies: []
 
 galaxy_info:
+  role_name: zookeeper
   author: apolloclark
   description: Install and configure Apache Zookeeper
   company: "Apollo Clark"
