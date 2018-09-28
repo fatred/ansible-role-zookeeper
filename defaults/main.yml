@@ -1,5 +1,5 @@
 ---
-# https://kafka.apache.org/downloads
+# https://zookeeper.apache.org/releases.html#news
 zookeeper_url: "http://www-us.apache.org/dist/zookeeper"
 
 # Overload variables using the dict named zookeeper
